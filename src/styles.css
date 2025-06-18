@@ -1,0 +1,12 @@
+/* You can add global styles to this file, and also import other style files */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* thead th { position: sticky; top: 0; }
+thead tr { position: sticky; top: 0; } */
+
+
+/* AG Grid Styles */
+/* @import 'ag-grid-community/styles/ag-grid.css'; */
+/* @import 'ag-grid-community/styles/ag-theme-alpine.css'; */

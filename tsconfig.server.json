@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "./dist/server",
+    "types": ["node"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true
+  },
+  "files": [
+    "src/main.server.ts",
+    "server.ts"
+  ],
+  "include": [
+    "src/**/*.server.ts"
+  ]
+}
