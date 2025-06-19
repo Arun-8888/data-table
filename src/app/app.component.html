@@ -132,8 +132,8 @@
       </div>
 
       <!-- Data Grid Area -->
-      <div
-        [class]="'rounded-lg border transition-colors duration-300 ' + (isDarkMode ? 'bg-slate-900 border-gray-700' : 'bg-gray-100 border-gray-100')">
+      <div *ngIf="!loading && !error"
+        [class]="'rounded-lg border transition-colors duration-300 table-container ' + (isDarkMode ? 'bg-slate-900 border-gray-700' : 'bg-gray-100 border-gray-100')">
         <!-- Row Groups Area -->
         <div class="p-4 border-b" (dragover)="onDragOver($event)" (drop)="onDrop($event)" [ngClass]="{
        'border-blue-500': isDragging,
@@ -153,13 +153,12 @@
               </svg>
             </div>
 
-
             <!-- Active Groups Pills -->
             <div class="flex flex-wrap gap-2">
               <div *ngFor="let field of rowGroups"
-                class="flex items-center gap-1 px-2 py-1 rounded bg-blue-600 text-white text-sm">
+                class="flex items-center gap-1 px-2 py-1 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors duration-200">
                 <span>{{ getColumnHeader(field) }}</span>
-                <button (click)="removeRowGroup(field)" class="ml-1 hover:text-gray-300">
+                <button (click)="removeRowGroup(field)" class="ml-1 hover:text-gray-300 transition-colors duration-200">
                   ×
                 </button>
               </div>
@@ -170,298 +169,282 @@
           </div>
         </div>
 
-
-
         <!-- Table Container with Fixed Header -->
-        <div class="relative overflow-x-auto h-[60vh]">
-          <thead
-            [class]="'sticky top-0 z-10 transition-colors duration-300 ' + (isDarkMode ? 'bg-slate-900 border-gray-700' : 'bg-gray-100 border-gray-100')">
+        <div class="relative overflow-x-auto h-[60vh] table-container">
+          <table class="data-table">
+            <thead class="table-header">
+              <tr>
+                <th class="w-16 p-4 text-left border-b border-r"
+                  [ngClass]="isDarkMode ? 'border-gray-700 text-gray-300' : 'border-gray-300 text-gray-700'"></th>
+                <th class="w-16 p-4 text-left border-b"
+                  [ngClass]="isDarkMode ? 'border-gray-700 text-gray-300' : 'border-gray-300 text-gray-700'"></th>
 
+                <ng-container *ngFor="let group of columnGroups">
+                  <th *ngIf="isColumnGroupVisible(group)" [attr.colspan]="getColumnGroupColspan(group)"
+                    class="p-4 text-left font-medium cursor-move select-none whitespace-nowrap border-b relative"
+                    [ngClass]="isDarkMode ? 'text-gray-300 border-gray-700' : 'text-gray-700 border-gray-300'"
+                    draggable="true" (dragstart)="onGroupDragStart($event, group)" (dragover)="onGroupDragOver($event)"
+                    (drop)="onGroupDrop($event, group)">
+                    <span
+                      class="pl-2 before:content-[''] before:absolute before:left-0 before:top-3 before:bottom-3 before:w-[1px]"
+                      [ngClass]="isDarkMode ? 'before:bg-gray-600' : 'before:bg-gray-400'"></span>
 
-            <tr>
-              <th class="w-16 p-4 text-left border-b border-r"
-                [ngClass]="isDarkMode ? 'border-gray-700 text-gray-300' : 'border-gray-300 text-gray-700'"></th>
-              <th class="w-16 p-4 text-left border-b"
-                [ngClass]="isDarkMode ? 'border-gray-700 text-gray-300' : 'border-gray-300 text-gray-700'"></th>
+                    {{ group.name }}
+                  </th>
+                </ng-container>
+              </tr>
 
-              <ng-container *ngFor="let group of columnGroups">
-                <th *ngIf="isColumnGroupVisible(group)" [attr.colspan]="getColumnGroupColspan(group)"
-                  class="p-4 text-left font-medium cursor-move select-none whitespace-nowrap border-b relative"
-                  [ngClass]="isDarkMode ? 'text-gray-300 border-gray-700' : 'text-gray-700 border-gray-300'"
-                  draggable="true" (dragstart)="onGroupDragStart($event, group)" (dragover)="onGroupDragOver($event)"
-                  (drop)="onGroupDrop($event, group)">
-                  <span
-                    class="pl-2 before:content-[''] before:absolute before:left-0 before:top-3 before:bottom-3 before:w-[1px]"
-                    [ngClass]="isDarkMode ? 'before:bg-gray-600' : 'before:bg-gray-400'"></span>
-
-                  {{ group.name }}
+              <tr class="bg-inherit">
+                <!-- S.No Header -->
+                <th class="w-16 p-4 text-left font-medium border-b border-r whitespace-nowrap"
+                  [class.text-gray-300]="isDarkMode" [class.text-gray-800]="!isDarkMode"
+                  [class.border-gray-700]="isDarkMode" [class.border-gray-300]="!isDarkMode">
+                  S.No
                 </th>
-              </ng-container>
-            </tr>
 
+                <!-- Checkbox Header -->
+                <th class="w-16 p-4 text-left whitespace-nowrap border-b" [class.border-gray-700]="isDarkMode"
+                  [class.border-gray-300]="!isDarkMode" [class.text-gray-300]="isDarkMode"
+                  [class.text-gray-800]="!isDarkMode">
+                  <input type="checkbox" [checked]="isAllSelected()" (change)="toggleAllRows()"
+                    class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+                </th>
 
-            <tr class="bg-inherit">
-              <!-- S.No Header -->
-              <th class="w-16 p-4 text-left font-medium border-b border-r whitespace-nowrap"
-                [class.text-gray-300]="isDarkMode" [class.text-gray-800]="!isDarkMode"
-                [class.border-gray-700]="isDarkMode" [class.border-gray-300]="!isDarkMode">
-                S.No
-              </th>
+                <!-- Dynamic Column Headers -->
+                <th *ngFor="let col of getOrderedColumns()" [class.hidden]="!isColumnVisible(col.field)"
+                  class="p-4 text-left font-medium relative whitespace-nowrap min-w-[210px] border-b border-r cursor-move"
+                  [class.text-gray-300]="isDarkMode" [class.text-gray-800]="!isDarkMode"
+                  [class.border-gray-700]="isDarkMode" [class.border-gray-300]="!isDarkMode" [draggable]="true"
+                  (dragstart)="onColumnDragStart($event, col)" (dragover)="onColumnDragOver($event)"
+                  (drop)="onColumnDrop($event, col)">
 
-              <!-- Checkbox Header -->
-              <th class="w-16 p-4 text-left whitespace-nowrap border-b" [class.border-gray-700]="isDarkMode"
-                [class.border-gray-300]="!isDarkMode" [class.text-gray-300]="isDarkMode"
-                [class.text-gray-800]="!isDarkMode">
-                <input type="checkbox" [checked]="isAllSelected()" (change)="toggleAllRows()"
-                  class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
-              </th>
-
-              <!-- Dynamic Column Headers -->
-              <th *ngFor="let col of getOrderedColumns()" [class.hidden]="!isColumnVisible(col.field)"
-                class="p-4 text-left font-medium relative whitespace-nowrap min-w-[210px] border-b border-r cursor-move"
-                [class.text-gray-300]="isDarkMode" [class.text-gray-800]="!isDarkMode"
-                [class.border-gray-700]="isDarkMode" [class.border-gray-300]="!isDarkMode" [draggable]="true"
-                (dragstart)="onColumnDragStart($event, col)" (dragover)="onColumnDragOver($event)"
-                (drop)="onColumnDrop($event, col)">
-
-                <!-- Header Title & Sort Icon -->
-                <div class="flex items-center justify-between gap-2">
-                  <div class="flex items-center gap-2 truncate">
-                    {{ col.header }}
-                    <span *ngIf="col.sortable" class="text-gray-500 flex-shrink-0">
-                      <svg *ngIf="sortField === col.field && sortDirection === 'asc'" class="w-4 h-4" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-                      </svg>
-                      <svg *ngIf="sortField === col.field && sortDirection === 'desc'" class="w-4 h-4" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </span>
-                  </div>
-
-                  <!-- Column Menu Icon -->
-                  <div
-                    *ngIf="['name', 'country', 'language', 'gameName', 'bought', 'bankBalance', 'rating', 'city', 'street', 'countryCode'].includes(col.field)"
-                    class="relative column-menu-container">
-                    <button (click)="toggleColumnMenu(col.field, $event)" class="text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                        <path
-                          d="M12 6.75a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 20.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                      </svg>
-                    </button>
-
-                    <!-- Column Menu Dropdown -->
-                    <div *ngIf="isColumnMenuOpen(col.field)" #columnMenuRef
-                      class="absolute right-0 mt-2 w-55 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-700 z-50"
-                      [class.bg-[#2a3447]]="isDarkMode" [class.bg-white]="!isDarkMode" [class.text-black]="!isDarkMode">
-                      <div class="py-1">
-                        <a href="#" (click)="sortAscending(col); $event.preventDefault()"
-                          class="block px-4 py-2 text-sm" [class.hover:bg-gray-700]="isDarkMode"
-                          [class.hover:bg-gray-200]="!isDarkMode">
-                          Sort Ascending
-                        </a>
-                        <a href="#" (click)="sortDescending(col); $event.preventDefault()"
-                          class="block px-4 py-2 text-sm" [class.hover:bg-gray-700]="isDarkMode"
-                          [class.hover:bg-gray-200]="!isDarkMode">
-                          Sort Descending
-                        </a>
-                        <a href="#" (click)="resetColumn(col.field); $event.preventDefault()"
-                          class="block px-4 py-2 text-sm" [class.hover:bg-gray-700]="isDarkMode"
-                          [class.hover:bg-gray-200]="!isDarkMode">
-                          Reset column
-                        </a>
-                      </div>
+                  <!-- Header Title & Sort Icon -->
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 truncate">
+                      {{ col.header }}
+                      <span *ngIf="col.sortable" class="text-gray-500 flex-shrink-0">
+                        <svg *ngIf="sortField === col.field && sortDirection === 'asc'" class="w-4 h-4" fill="none"
+                          viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                        </svg>
+                        <svg *ngIf="sortField === col.field && sortDirection === 'desc'" class="w-4 h-4" fill="none"
+                          viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </span>
                     </div>
-                  </div>
-                </div>
-                <div class="mt-2">
-                  <div *ngIf="col.filterable" class="relative w-full flex items-center gap-2">
-                    <input type="text" [placeholder]="'Filter ' + col.header.toLowerCase() + '...'"
-                      [(ngModel)]="columnFilters[col.field]" (ngModelChange)="setColumnFilterValue(col.field, $event)"
-                      (click)="$event.stopPropagation()"
-                      class="w-full bg-[#2a3447] text-gray-200 px-2 py-1 rounded text-sm border border-gray-700 focus:outline-none focus:border-blue-500"
-                      [class.bg-slate-700]="isDarkMode" [class.text-gray-200]="isDarkMode"
-                      [class.border-gray-700]="isDarkMode" [class.bg-white]="!isDarkMode"
-                      [class.text-gray-800]="!isDarkMode" [class.border-gray-300]="!isDarkMode">
+
+                    <!-- Column Menu Icon -->
                     <div
                       *ngIf="['name', 'country', 'language', 'gameName', 'bought', 'bankBalance', 'rating', 'city', 'street', 'countryCode'].includes(col.field)"
-                      class="text-gray-400 relative">
-                      <button (click)="toggleFilterDropdown(col.field, $event)" class="hover:text-gray-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                          stroke="currentColor" class="size-6">
-                          <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                      class="relative column-menu-container">
+                      <button (click)="toggleColumnMenu(col.field, $event)" class="text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                          <path
+                            d="M12 6.75a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 20.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
                         </svg>
                       </button>
 
-                      <div *ngIf="isFilterDropdownOpen(col.field)" #filterDropdownRefs
-                        class="absolute right-0 mt-2 w-55 rounded-md shadow-lg divide-y divide-gray-700 z-50"
-                        [class.hover:bg-[#2a3447]]="isDarkMode" [class.hover:bg-gray-200]="!isDarkMode"
-                        [class.bg-[#2a3447]]="isDarkMode" [class.bg-white]="!isDarkMode">
-                        <div class="p-2">
-                          <div class="mb-2">
-                            <input type="text" [placeholder]="'Search ' + col.header.toLowerCase() + '...'"
-                              class="w-full px-2 py-1 text-sm rounded border" [class.bg-slate-700]="isDarkMode"
-                              [class.text-gray-200]="isDarkMode" [class.border-gray-700]="isDarkMode"
-                              [class.bg-white]="!isDarkMode" [class.text-gray-800]="!isDarkMode"
-                              [class.border-gray-300]="!isDarkMode" [(ngModel)]="filterSearchTexts[col.field]">
-                          </div>
-                          <div class="max-h-48 overflow-y-auto ">
-                            <div *ngFor="let option of getFilterOptions(col.field)"
-                              class="flex items-center gap-2 p-1 hover:bg-gray-700/30 rounded">
-                              <input type="checkbox" [checked]="isFilterOptionSelected(col.field, option)"
-                                (change)="toggleFilterOption(col.field, option)"
-                                class="rounded border-gray-600 text-blue-500 focus:ring-blue-500">
-                              <span [class.text-gray-200]="isDarkMode" [class.text-gray-800]="!isDarkMode">
-                                {{ option }}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="p-2 flex justify-between">
-                          <button class="text-sm text-blue-500 hover:text-blue-400"
-                            (click)="selectAllFilterOptions(col.field)">
-                            Select All
-                          </button>
-                          <button class="text-sm text-blue-500 hover:text-blue-400"
-                            (click)="clearFilterOptions(col.field)">
-                            Clear
-                          </button>
+                      <!-- Column Menu Dropdown -->
+                      <div *ngIf="isColumnMenuOpen(col.field)" #columnMenuRef
+                        class="absolute right-0 mt-2 w-55 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-700 z-50"
+                        [class.bg-[#2a3447]]="isDarkMode" [class.bg-white]="!isDarkMode" [class.text-black]="!isDarkMode">
+                        <div class="py-1">
+                          <a href="#" (click)="sortAscending(col); $event.preventDefault()"
+                            class="block px-4 py-2 text-sm" [class.hover:bg-gray-700]="isDarkMode"
+                            [class.hover:bg-gray-200]="!isDarkMode">
+                            Sort Ascending
+                          </a>
+                          <a href="#" (click)="sortDescending(col); $event.preventDefault()"
+                            class="block px-4 py-2 text-sm" [class.hover:bg-gray-700]="isDarkMode"
+                            [class.hover:bg-gray-200]="!isDarkMode">
+                            Sort Descending
+                          </a>
+                          <a href="#" (click)="resetColumn(col.field); $event.preventDefault()"
+                            class="block px-4 py-2 text-sm" [class.hover:bg-gray-700]="isDarkMode"
+                            [class.hover:bg-gray-200]="!isDarkMode">
+                            Reset column
+                          </a>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                  <div class="mt-2">
+                    <div *ngIf="col.filterable" class="relative w-full flex items-center gap-2">
+                      <input type="text" [placeholder]="'Filter ' + col.header.toLowerCase() + '...'"
+                        [(ngModel)]="columnFilters[col.field]" (ngModelChange)="setColumnFilterValue(col.field, $event)"
+                        (click)="$event.stopPropagation()"
+                        class="w-full bg-[#2a3447] text-gray-200 px-2 py-1 rounded text-sm border border-gray-700 focus:outline-none focus:border-blue-500"
+                        [class.bg-slate-700]="isDarkMode" [class.text-gray-200]="isDarkMode"
+                        [class.border-gray-700]="isDarkMode" [class.bg-white]="!isDarkMode"
+                        [class.text-gray-800]="!isDarkMode" [class.border-gray-300]="!isDarkMode">
+                      <div
+                        *ngIf="['name', 'country', 'language', 'gameName', 'bought', 'bankBalance', 'rating', 'city', 'street', 'countryCode'].includes(col.field)"
+                        class="text-gray-400 relative">
+                        <button (click)="toggleFilterDropdown(col.field, $event)" class="hover:text-gray-300">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor" class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                          </svg>
+                        </button>
 
-
-              </th>
-            </tr>
-
-          </thead>
-
-          <tbody>
-            <ng-container *ngFor="let item of getGroupedData()">
-
-              <!-- Group Row -->
-              <tr *ngIf="isGroupItem(item)"
-                class="bg-[#2a3447] border-b border-gray-700 cursor-pointer hover:bg-[#343e54]"
-                (click)="toggleGroup(item.groupValue)">
-                <td [attr.colspan]="100" class="p-4 border-b border-gray-700">
-                  <div class="flex items-center gap-2 text-gray-300">
-                    <svg class="w-4 h-4 transform transition-transform flex-shrink-0"
-                      [class.rotate-90]="isGroupExpanded(item.groupValue)" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                    <span class="whitespace-nowrap">
-                      {{ item.groupValue }} ({{ item.count }} items)
-                    </span>
+                        <div *ngIf="isFilterDropdownOpen(col.field)" #filterDropdownRefs
+                          class="absolute right-0 mt-2 w-55 rounded-md shadow-lg divide-y divide-gray-700 z-50"
+                          [class.hover:bg-[#2a3447]]="isDarkMode" [class.hover:bg-gray-200]="!isDarkMode"
+                          [class.bg-[#2a3447]]="isDarkMode" [class.bg-white]="!isDarkMode">
+                          <div class="p-2">
+                            <div class="mb-2">
+                              <input type="text" [placeholder]="'Search ' + col.header.toLowerCase() + '...'"
+                                class="w-full px-2 py-1 text-sm rounded border" [class.bg-slate-700]="isDarkMode"
+                                [class.text-gray-200]="isDarkMode" [class.border-gray-700]="isDarkMode"
+                                [class.bg-white]="!isDarkMode" [class.text-gray-800]="!isDarkMode"
+                                [class.border-gray-300]="!isDarkMode" [(ngModel)]="filterSearchTexts[col.field]">
+                            </div>
+                            <div class="max-h-48 overflow-y-auto ">
+                              <div *ngFor="let option of getFilterOptions(col.field)"
+                                class="flex items-center gap-2 p-1 hover:bg-gray-700/30 rounded">
+                                <input type="checkbox" [checked]="isFilterOptionSelected(col.field, option)"
+                                  (change)="toggleFilterOption(col.field, option)"
+                                  class="rounded border-gray-600 text-blue-500 focus:ring-blue-500">
+                                <span [class.text-gray-200]="isDarkMode" [class.text-gray-800]="!isDarkMode">
+                                  {{ option }}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="p-2 flex justify-between">
+                            <button class="text-sm text-blue-500 hover:text-blue-400"
+                              (click)="selectAllFilterOptions(col.field)">
+                              Select All
+                            </button>
+                            <button class="text-sm text-blue-500 hover:text-blue-400"
+                              (click)="clearFilterOptions(col.field)">
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </td>
+
+
+                </th>
               </tr>
 
-              <!-- Participant Row -->
-              <<tr *ngIf="isParticipantItem(item)">
-  ...
-  <td *ngFor="let col of columns">
-    <ng-container *ngIf="col.field === 'timeline'">
-      <div echarts [options]="item.chartOptions ?? null" class="h-[100px] w-full"></div>
-    </ng-container>
-    <ng-container *ngIf="col.field !== 'timeline'">
-      <span [class]="getFieldClasses(item, col)" class="truncate block">
-        {{ getFieldContent(item, col) }}
-      </span>
-    </ng-container>
-  </td>
-</tr>
-<!-- </tr> -->
+            </thead>
+          </table>
+          <cdk-virtual-scroll-viewport itemSize="70" class="w-full" [style.height.px]="600">
+            <table class="data-table">
+              <tbody>
+                <ng-container *cdkVirtualFor="let item of getGroupedData(); trackBy: trackById">
+                  <!-- Group Row -->
+                  <tr *ngIf="isGroupItem(item)"
+                    class="group-row border-b border-gray-700 cursor-pointer hover:bg-[#343e54] transition-all duration-200"
+                    [class.expanded]="isGroupExpanded(item.groupValue)"
+                    (click)="toggleGroup(item.groupValue)">
+                    <td [attr.colspan]="100" class="p-4 border-b border-gray-700">
+                      <div class="flex items-center gap-2 text-gray-300">
+                        <svg class="w-4 h-4 transform transition-transform flex-shrink-0"
+                          [class.rotate-90]="isGroupExpanded(item.groupValue)" fill="none" viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <span class="whitespace-nowrap">
+                          {{ item.groupValue }} ({{ item.count }} items)
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
 
+                  <!-- Participant Row -->
+                  <tr *ngIf="isParticipantItem(item)" 
+                      class="table-row fade-in"
+                      [class.selected]="hiddenRows.has(getRowId(item))">
+                    <!-- S.No Column -->
+                    <td class="table-cell w-16 p-4 whitespace-nowrap"
+                      [ngClass]="isDarkMode ? 'text-gray-300 border-b border-r border-gray-700' : 'text-gray-600 border-b border-r border-gray-300'">
+                      {{ (currentPage - 1) * pageSize + getGroupedData().indexOf(item) + 1 }}
+                    </td>
 
-                <!-- S.No Column -->
-                <td class="w-16 p-4 whitespace-nowrap"
-                  [ngClass]="isDarkMode ? 'text-gray-300 border-b border-r border-gray-700' : 'text-gray-600 border-b border-r border-gray-300'">
-                  {{ (currentPage - 1) * pageSize + getGroupedData().indexOf(item) + 1 }}
-                </td>
+                    <!-- Checkbox Column -->
+                    <td class="table-cell w-16 p-4" [ngClass]="isDarkMode ? 'border-b border-gray-700' : 'border-b border-gray-300'">
+                      <input
+                        type="checkbox"
+                        [checked]="hiddenRows.has(getRowId(item))"
+                        (change)="toggleRowSelection(getRowId(item))"
+                        class="custom-checkbox"
+                        [ngClass]="isDarkMode
+                          ? 'rounded bg-gray-800 border-gray-600 text-blue-400 focus:ring-blue-400'
+                          : 'rounded bg-white border-gray-300 text-blue-600 focus:ring-blue-600'"
+                      />
+                    </td>
 
-
-                <!-- Checkbox Column -->
-           <td class="w-16 p-4" [ngClass]="isDarkMode ? 'border-b border-gray-700' : 'border-b border-gray-300'">
-<ng-container *ngIf="isDataItem(item)">
-    <input
-      type="checkbox"
-      [checked]="hiddenRows.has(item.id)"
-      (change)="toggleRowSelection(item.id)"
-      [ngClass]="isDarkMode
-        ? 'rounded bg-gray-800 border-gray-600 text-blue-400 focus:ring-blue-400'
-        : 'rounded bg-white border-gray-300 text-blue-600 focus:ring-blue-600'"
-    />
-  </ng-container>
-</td>
-
-                <!-- Data Columns -->
-                <!-- Data Columns -->
-<td *ngFor="let col of columns" [ngClass]="{
-  'hidden': !isColumnVisible(col.field),
-  'whitespace-nowrap': true,
-  'min-w-[210px]': true,
-  'truncate': true,
-  'p-4': true,
-  'border-b border-r': true,
-  'border-gray-700 text-gray-300': isDarkMode,
-  'border-gray-300 text-gray-700': !isDarkMode
-}">
-
-  <!-- 🟦 If column is 'timeline', show EChart -->
-  <ng-container *ngIf="col.field === 'timeline'; else normalCell">
-    <div echarts [options]="item.chartOptions" class="h-[100px] w-full"></div>
-  </ng-container>
-
-  <!-- 🟫 Else, show normal text -->
-  <ng-template #normalCell>
-    <span [class]="getFieldClasses(item, col)" class="truncate block">
-      {{ getFieldContent(item, col) }}
-    </span>
-  </ng-template>
-
-</td>
-
-
-              <!-- </tr> -->
-            </ng-container>
-          </tbody>
-
+                    <!-- Data Columns -->
+                    <td *ngFor="let col of columns" [ngClass]="{
+                      'hidden': !isColumnVisible(col.field),
+                      'table-cell': true,
+                      'whitespace-nowrap': true,
+                      'min-w-[210px]': true,
+                      'truncate': true,
+                      'p-4': true,
+                      'border-b border-r': true,
+                      'border-gray-700 text-gray-300': isDarkMode,
+                      'border-gray-300 text-gray-700': !isDarkMode
+                    }">
+                      <!-- If column is 'timeline', show EChart -->
+                      <ng-container *ngIf="col.field === 'timeline' && isParticipantItem(item) && item.timelineData; else normalCell">
+                        <div echarts [options]="getTimelineChartOptions(item.timelineData)" class="h-[60px] w-full"></div>
+                      </ng-container>
+                      <!-- Else, show normal text -->
+                      <ng-template #normalCell>
+                        <span [class]="getFieldClasses(item, col)" class="truncate block">
+                          {{ getFieldContent(item, col) }}
+                        </span>
+                      </ng-template>
+                    </td>
+                  </tr>
+                </ng-container>
+              </tbody>
+            </table>
+          </cdk-virtual-scroll-viewport>
         </div>
 
-
-<!-- app.component.html -->
-<td *ngFor="let col of columns" [ngClass]="{
-  'hidden': !isColumnVisible(col.field),
-  'whitespace-nowrap': true,
-  'min-w-[210px]': true,
-  'truncate': true,
-  'p-4': true,
-  'border-b border-r': true,
-  'border-gray-700 text-gray-300': isDarkMode,
-  'border-gray-300 text-gray-700': !isDarkMode
-}">
-
-  <!-- Show chart if column is Time line -->
-  <ng-container *ngFor="let item of paginatedData">
-  <ng-container *ngIf="isDataItem(item)">
-    <div echarts [options]="item.chartOptions" class="h-[100px] w-full"></div>
-    <input [checked]="hiddenRows.has(item.id)" (change)="toggleRowSelection(item.id)" />
-  </ng-container>
-</ng-container>
-
-  <!-- Default text cell -->
-  <ng-template #normalCell>
-    <span [class]="getFieldClasses(item, col)" class="truncate block">
-      {{ getFieldContent(item, col) }}
-    </span>
-  </ng-template>
-
-</td>
+        <!-- Pagination -->
+        <div class="pagination p-4 border-t" [ngClass]="isDarkMode ? 'border-gray-700' : 'border-gray-300'">
+          <div class="flex items-center justify-between w-full">
+            <div class="text-sm text-gray-500">
+              Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, displayedData.length) }} of {{ displayedData.length }} entries
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                class="pagination-btn" 
+                [disabled]="currentPage === 1"
+                (click)="currentPage = currentPage - 1"
+                [ngClass]="{
+                  'bg-gray-200 text-gray-500 cursor-not-allowed': currentPage === 1,
+                  'bg-white text-gray-700 border-gray-300 hover:bg-gray-50': currentPage > 1 && !isDarkMode,
+                  'bg-slate-700 text-gray-200 border-gray-600 hover:bg-slate-600': currentPage > 1 && isDarkMode
+                }">
+                Previous
+              </button>
+              <span class="px-3 py-1 text-sm">
+                Page {{ currentPage }} of {{ totalPages }}
+              </span>
+              <button 
+                class="pagination-btn" 
+                [disabled]="currentPage === totalPages"
+                (click)="currentPage = currentPage + 1"
+                [ngClass]="{
+                  'bg-gray-200 text-gray-500 cursor-not-allowed': currentPage === totalPages,
+                  'bg-white text-gray-700 border-gray-300 hover:bg-gray-50': currentPage < totalPages && !isDarkMode,
+                  'bg-slate-700 text-gray-200 border-gray-600 hover:bg-slate-600': currentPage < totalPages && isDarkMode
+                }">
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
 
       </div>
     </div>
