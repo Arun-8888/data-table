@@ -1,10 +1,12 @@
-import { Component, OnInit, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { DataService } from './services/data.service';
-import { NgxEchartsModule } from 'ngx-echarts';
 import { EChartsOption } from 'echarts';
+import { Subject, takeUntil } from 'rxjs';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { NgxEchartsModule } from 'ngx-echarts';
 
 interface Participant {
   id?: number;
@@ -17,6 +19,7 @@ interface Participant {
   timeline?: string;
   totalvalue?: string;
   chartOptions?: EChartsOption | null; // ✅ mark optional
+  timelineData?: number[];
 }
 
 interface ColumnDef {
@@ -53,37 +56,94 @@ type DataItem = Participant | GroupItem;
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule,NgxEchartsModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, ScrollingModule, NgxEchartsModule],
   providers: [DataService],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  private chartInstances: Map<string, any> = new Map();
+
+  // Add Math property for template access
+  Math = Math;
+
   // Data properties
- generateChartOptions(item: any): any {
-  return {
-    backgroundColor: '#1e2a38',
-    title: { show: false },
-    tooltip: { trigger: 'axis' },
-    xAxis: {
-      type: 'category',
-      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-      axisLabel: { color: '#ccc', fontSize: 9 }
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { color: '#ccc', fontSize: 9 }
-    },
-    series: [{
-      type: 'bar',
-      data: [5, 10, 15, 8, 12], // Optionally use item-based values
-      itemStyle: {
-        color: '#4ea6ff',
-        borderRadius: [4, 4, 0, 0]
-      }
-    }]
-  };
-}
+  generateChartOptions(item: any): any {
+    return {
+      backgroundColor: 'transparent',
+      title: { show: false },
+      tooltip: { 
+        trigger: 'axis',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        borderColor: '#4ea6ff',
+        borderWidth: 1,
+        textStyle: { color: '#fff' }
+      },
+      grid: { 
+        left: '5%', 
+        right: '5%', 
+        top: '10%', 
+        bottom: '10%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        axisLabel: { 
+          color: '#ccc', 
+          fontSize: 9,
+          show: false
+        },
+        axisLine: { show: false },
+        axisTick: { show: false }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { 
+          color: '#ccc', 
+          fontSize: 9,
+          show: false
+        },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { show: false }
+      },
+      series: [{
+        type: 'bar',
+        data: [5, 10, 15, 8, 12], // Optionally use item-based values
+        itemStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: '#4ea6ff' },
+              { offset: 1, color: '#2d5aa0' }
+            ]
+          },
+          borderRadius: [4, 4, 0, 0]
+        },
+        emphasis: {
+          itemStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: '#60a5fa' },
+                { offset: 1, color: '#3b82f6' }
+              ]
+            }
+          }
+        }
+      }]
+    };
+  }
   data: Participant[] = [];
   filteredData: Participant[] = [];
   displayedData: DataItem[] = [];
@@ -168,43 +228,74 @@ pageSize: number = this.pageSizeOptions[0]; // Default to 10 rows per page
   ngOnInit() {
     this.loadData();
   }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+    
+    // Clean up ECharts instances
+    this.chartInstances.forEach(instance => {
+      if (instance && typeof instance.dispose === 'function') {
+        instance.dispose();
+      }
+    });
+    this.chartInstances.clear();
+    
+    // Clear large data structures
+    this.data = [];
+    this.filteredData = [];
+    this.displayedData = [];
+    this.hiddenRows.clear();
+    this.selectedRows.clear();
+    this.expandedGroups.clear();
+    this.filterOptions = {};
+    this.selectedFilterOptions = {};
+  }
+
   private loadData(): void {
     this.loading = true;
     this.error = null;
     console.log('Starting data load...');
     
-    this.dataService.getParticipants().subscribe({
-      next: (response) => {
-        console.log('Raw response:', response);
-        if (response && response.participants) {
-          this.data = response.participants;
-          console.log('Data loaded:', this.data.length, 'participants');
-          
-          const rowCount = parseInt(this.selectedDataSize.split(' ')[1],);
-          console.log('Initializing with', rowCount, 'rows');
-          
-          this.filteredData = this.data.slice(0, rowCount);
-          
-          // Initialize the display
-          this.initializeAllFilterOptions();
-          this.applyFiltersAndSort();
-          this.updateDisplayData();
-          
-          console.log('Display data prepared:', this.displayedData.length, 'items');
-        } else {
-          this.error = 'Invalid response format';
-          console.error('Invalid response format:', response);
+    this.dataService.getParticipants()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          console.log('Raw response:', response);
+          if (response && response.participants) {
+            // Add timelineData property with random data if missing
+           this.data = (response.participants as Participant[]).map(p => ({
+  ...p,
+  timelineData: p.timelineData || Array.from({ length: 20 }, () => Math.floor(Math.random() * 20) + 1)
+}));
+            console.log('Data loaded:', this.data.length, 'participants');
+            
+            const rowCount = parseInt(this.selectedDataSize.split(' ')[1],);
+            console.log('Initializing with', rowCount, 'rows');
+            
+            // Only load the required number of rows to reduce memory usage
+            this.filteredData = this.data.slice(0, rowCount);
+            
+            // Initialize the display
+            this.initializeAllFilterOptions();
+            this.applyFiltersAndSort();
+            this.updateDisplayData();
+            
+            console.log('Display data prepared:', this.displayedData.length, 'items');
+          } else {
+            this.error = 'Invalid response format';
+            console.error('Invalid response format:', response);
+          }
+        },
+        error: (error: Error) => {
+          this.error = 'Error loading data: ' + error.message;
+          console.error('Error loading participants:', error);
+        },
+        complete: () => {
+          this.loading = false;
+          console.log('Data loading completed');
         }
-      },
-      error: (error: Error) => {
-        this.error = 'Error loading data: ' + error.message;
-        console.error('Error loading participants:', error);
-      },
-      complete: () => {
-        this.loading = false;
-        console.log('Data loading completed');
-      }
-    });
+      });
   }
 
   // Type guards and helpers
@@ -226,19 +317,6 @@ isDataItem(item: DataItem | GroupItem): item is DataItem {
   isRowSelected(item: DataItem): boolean {
     if (!this.isParticipantItem(item)) return false;
     return this.hiddenRows.has(this.getRowId(item));
-  }
-
-  toggleRowSelection(id: number): void {
-    if (id === -1) return;
-    
-    if (this.hiddenRows.has(id)) {
-      this.hiddenRows.delete(id);
-      this.selectedRows.delete(id);
-    } else {
-      this.hiddenRows.add(id);
-      this.selectedRows.add(id);
-    }
-    this.updateDisplayData();
   }
 
   initializeFilterOptions(field: keyof Participant): void {
@@ -265,36 +343,7 @@ isDataItem(item: DataItem | GroupItem): item is DataItem {
  applyFiltersAndSort() {
     let result = this.data.slice(0, parseInt(this.selectedDataSize.split(' ')[1], 10));
 
-    // Apply column filters
-    Object.entries(this.columnFilters).forEach(([field, value]) => {
-      result = result.filter(item => 
-        String(item[field as keyof Participant])
-          .toLowerCase()
-          .includes(value.toLowerCase())
-      );
-    });
-
-    // Apply column filters
-    Object.entries(this.columnFilters).forEach(([field, value]) => {
-      result = result.filter(item => 
-        String(item[field as keyof Participant])
-          .toLowerCase()
-          .includes(value.toLowerCase())
-      );
-    });
-
-
-    // Apply column filters
-    Object.entries(this.columnFilters).forEach(([field, value]) => {
-      result = result.filter(item => 
-        String(item[field as keyof Participant])
-          .toLowerCase()
-          .includes(value.toLowerCase())
-      );
-    });
-
-
-    // Apply global filter
+    // Apply filters more efficiently
     if (this.filterText) {
       const searchText = this.filterText.toLowerCase();
       result = result.filter(item => {
@@ -335,9 +384,7 @@ isDataItem(item: DataItem | GroupItem): item is DataItem {
       });
     }
 
-    // Apply data size limit
-    const rowCount = parseInt(this.selectedDataSize.split(' ')[1], 10);
-    this.filteredData = result.slice(0, rowCount);
+    this.filteredData = result;
     this.currentPage = 1;
     this.updateDisplayData();
   }
@@ -383,13 +430,6 @@ isDataItem(item: DataItem | GroupItem): item is DataItem {
     this.isColumnVisibilityOpen = false;
     this.activeDropdown = null;
     this.activeFilterDropdown = null;
-  }
-
-  // Sorting methods
-  sortDescending(col: ColumnDef): void {
-    this.sortField = col.field;
-    this.sortDirection = 'desc';
-    this.applyFiltersAndSort();
   }
 
   // Column management
@@ -507,16 +547,7 @@ private applyFilters() {
     this.currentPage = 1;
     this.updateDisplayData();
   }
-  // Group management
-  toggleGroup(groupValue: string): void {
-    if (this.expandedGroups.has(groupValue)) {
-      this.expandedGroups.delete(groupValue);
-    } else {
-      this.expandedGroups.add(groupValue);
-    }
-    this.updateDisplayData();
-  }
-
+  // Group management - toggleGroup method moved to enhanced version below
   isGroupExpanded(groupValue: string): boolean {
     return this.expandedGroups.has(groupValue);
   }
@@ -541,7 +572,9 @@ private applyFilters() {
   // Field value getters
   getFieldValue(item: DataItem, field: keyof Participant): string | number | boolean | undefined {
     if (!this.isParticipantItem(item)) return undefined;
-    return item[field];
+    const value = item[field];
+    if (value === null || typeof value === 'object') return undefined;
+    return value;
   }
 
   getStringFieldValue(item: DataItem, field: keyof Participant): string {
@@ -554,11 +587,6 @@ private applyFilters() {
     const startIndex = (this.currentPage - 1) * this.pageSize;
     const endIndex = startIndex + this.pageSize;
     return this.displayedData.slice(startIndex, endIndex);
-    this.paginatedData = this.rawData.map((participant: any) => ({
-  ...participant,
-  chartOptions: this.generateChartOptions(participant)  // 👈 Add this field
-}));
-
   }
 
   get totalPages(): number {
@@ -584,12 +612,7 @@ private applyFilters() {
     this.isDarkMode = !this.isDarkMode;
   }
 
-  onDataSizeChange(newSize: string): void {
-    this.selectedDataSize = newSize;
-    const rowCount = parseInt(newSize.split(' ')[1], 10);
-    this.filteredData = this.data.slice(0, rowCount);
-    this.applyFiltersAndSort();
-  }
+  // onDataSizeChange method moved to enhanced version below
 
   // Column visibility methods
   toggleColumnVisibilityDropdown(event: Event): void {
@@ -597,9 +620,7 @@ private applyFilters() {
     this.isColumnVisibilityOpen = !this.isColumnVisibilityOpen;
   }
 
-  toggleColumnVisibility(field: keyof Participant): void {
-    this.columnVisibility[field] = !this.columnVisibility[field];
-  }
+  // toggleColumnVisibility method moved to enhanced version below
 
   // Event handlers
   handleDropdownClick(event: Event): void {
@@ -628,11 +649,7 @@ private applyFilters() {
   }
 
   // Column sorting
-  sortAscending(col: ColumnDef): void {
-    this.sortField = col.field;
-    this.sortDirection = 'asc';
-    this.applyFiltersAndSort();
-  }
+  // sortAscending method moved to enhanced version below
 
   // Row selection
   isAllSelected(): boolean {
@@ -763,5 +780,238 @@ private applyFilters() {
 
   getColumnGroup(field: keyof Participant): string | undefined {
     return this.columns.find(col => col.field === field)?.group;
+  }
+
+  // Add a method to generate compact bar chart options for timeline
+  getTimelineChartOptions(data: number[]): EChartsOption {
+    return {
+      animation: true,
+      animationDuration: 1000,
+      animationEasing: 'cubicOut',
+      tooltip: { 
+        show: true,
+        trigger: 'axis',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        borderColor: '#4ea6ff',
+        borderWidth: 1,
+        textStyle: { color: '#fff', fontSize: 12 },
+        formatter: (params: any) => {
+         return `Value: ${params[0].value}`;
+
+
+        }
+      },
+      grid: { 
+        left: 2, 
+        right: 2, 
+        top: 2, 
+        bottom: 2,
+        containLabel: false
+      },
+      xAxis: { 
+        type: 'category', 
+        show: false, 
+        data: data.map((_, i) => i),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { show: false }
+      },
+      yAxis: { 
+        type: 'value', 
+        show: false,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { show: false },
+        splitLine: { show: false }
+      },
+      series: [{
+        type: 'bar',
+        data,
+        barWidth: '80%',
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: '#4ea6ff' },
+              { offset: 1, color: '#2d5aa0' }
+            ]
+          },
+          borderRadius: [2, 2, 0, 0]
+        },
+        emphasis: { 
+          disabled: false,
+          itemStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: '#60a5fa' },
+                { offset: 1, color: '#3b82f6' }
+              ]
+            }
+          }
+        },
+        label: { show: false },
+        markLine: undefined,
+        markPoint: undefined,
+        markArea: undefined
+      }]
+    };
+  }
+
+  // Add a trackById method for virtual scroll
+  trackById(index: number, item: any) {
+    return item.id || item.groupValue || index;
+  }
+
+  getTimelineBarWidth(timelineData: number[]): number {
+    if (!timelineData || timelineData.length === 0) return 0;
+    const sum = timelineData.reduce((a, b) => a + b, 0);
+    return (sum / (timelineData.length * 20)) * 100;
+  }
+
+  // Enhanced row interaction methods
+  hoveredRow: number | null = null;
+
+  onRowMouseEnter(rowId: number): void {
+    this.hoveredRow = rowId;
+  }
+
+  onRowMouseLeave(): void {
+    this.hoveredRow = null;
+  }
+
+  isRowHovered(rowId: number): boolean {
+    return this.hoveredRow === rowId;
+  }
+
+  // Keyboard navigation
+  @HostListener('document:keydown', ['$event'])
+  handleKeyboardNavigation(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.closeAllDropdowns();
+    }
+    
+    if (event.key === 'Enter' && event.ctrlKey) {
+      // Ctrl+Enter to select all visible rows
+      this.toggleAllRows();
+    }
+  }
+
+  // Enhanced filter application with debouncing
+  private filterTimeout: any;
+
+  applyFiltersWithDebounce(): void {
+    if (this.filterTimeout) {
+      clearTimeout(this.filterTimeout);
+    }
+    
+    this.filterTimeout = setTimeout(() => {
+      this.applyFiltersAndSort();
+    }, 300);
+  }
+
+  // Enhanced column visibility toggle with animation
+  toggleColumnVisibility(field: keyof Participant): void {
+    this.columnVisibility[field] = !this.columnVisibility[field];
+    
+    // Add a small delay to allow for smooth animation
+    setTimeout(() => {
+      this.updateDisplayData();
+    }, 100);
+  }
+
+  // Enhanced sorting with visual feedback
+  sortAscending(col: ColumnDef): void {
+    this.sortField = col.field;
+    this.sortDirection = 'asc';
+    this.applyFiltersAndSort();
+    
+    // Add visual feedback
+    this.showSortFeedback(col.field, 'asc');
+  }
+
+  sortDescending(col: ColumnDef): void {
+    this.sortField = col.field;
+    this.sortDirection = 'desc';
+    this.applyFiltersAndSort();
+    
+    // Add visual feedback
+    this.showSortFeedback(col.field, 'desc');
+  }
+
+  private showSortFeedback(field: keyof Participant, direction: 'asc' | 'desc'): void {
+    // This could be enhanced with a toast notification or visual indicator
+   console.log(`Sorted ${field} in ${direction} order`);
+
+
+  }
+
+  // Enhanced row selection with better UX
+  toggleRowSelection(id: number): void {
+    if (id === -1) return;
+    
+    if (this.hiddenRows.has(id)) {
+      this.hiddenRows.delete(id);
+      this.selectedRows.delete(id);
+    } else {
+      this.hiddenRows.add(id);
+      this.selectedRows.add(id);
+    }
+    
+    // Add visual feedback
+    this.showSelectionFeedback();
+    this.updateDisplayData();
+  }
+
+  private showSelectionFeedback(): void {
+    // This could be enhanced with a toast notification
+    const selectedCount = this.selectedRows.size;
+   console.log(`${selectedCount} row(s) selected`);
+
+
+  }
+
+  // Enhanced group toggle with animation
+  toggleGroup(groupValue: string): void {
+    if (this.expandedGroups.has(groupValue)) {
+      this.expandedGroups.delete(groupValue);
+    } else {
+      this.expandedGroups.add(groupValue);
+    }
+    
+    // Add a small delay for smooth animation
+    setTimeout(() => {
+      this.updateDisplayData();
+    }, 150);
+  }
+
+  // Enhanced data size change with loading state
+  onDataSizeChange(newSize: string): void {
+    this.selectedDataSize = newSize;
+    const rowCount = parseInt(newSize.split(' ')[1], 10);
+    
+    // Show loading state for large data changes
+    if (rowCount > 1000) {
+      this.loading = true;
+      setTimeout(() => {
+        this.loading = false;
+      }, 500);
+    }
+    
+    // Clear previous data to free memory
+    this.filteredData = [];
+    this.displayedData = [];
+    
+    // Only load the required number of rows
+    this.filteredData = this.data.slice(0, rowCount);
+    this.applyFiltersAndSort();
   }
 }
