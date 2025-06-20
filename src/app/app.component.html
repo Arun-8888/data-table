@@ -23,29 +23,6 @@
             </div>
           </div>
         </div>
-
-
-        <!-- Theme Dropdown -->
-        <!-- <div class="flex items-center gap-3">
-          <label [class.text-gray-300]="isDarkMode" [class.text-gray-700]="!isDarkMode">Theme:</label>
-          <div class="relative">
-            <select [ngModel]="selectedTheme" (ngModelChange)="selectedTheme = $event"
-              class="px-2 py-1 rounded-md w-40 appearance-none cursor-pointer border focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              [ngClass]="{
-        'bg-white text-gray-800 border-gray-300': !isDarkMode,
-        'bg-slate-700 text-gray-200 border-gray-700': isDarkMode
-      }">
-              <option *ngFor="let theme of themes" [value]="theme">{{ theme }}</option>
-            </select>
-            <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-              <svg class="w-4 h-4 fill-current text-gray-400" viewBox="0 0 20 20">
-                <path d="M7 10l5 5 5-5H7z" />
-              </svg>
-            </div>
-          </div>
-        </div> -->
-
-
         <!-- Filter Input -->
         <div class="flex items-center gap-3">
           <label [class.text-gray-300]="isDarkMode" [class.text-gray-700]="!isDarkMode">Filter:</label>
@@ -66,8 +43,6 @@
             </div>
           </div>
         </div>
-
-
         <!-- Column Visibility Control -->
         <div class="flex items-center gap-6">
           <div class="relative" id="columnVisibilityDropdown">
@@ -79,7 +54,6 @@
       }">
               <span class="text-sm">Columns</span>
             </button>
-
             <!-- Column Visibility Dropdown -->
             <div *ngIf="isColumnVisibilityOpen"
               class="absolute right-0 mt-1 w-48 py-2 rounded-md shadow-lg border focus:outline-none z-50" [ngClass]="{
@@ -108,8 +82,6 @@
             </div>
           </div>
         </div>
-
-
         <button (click)="toggleTheme()"
           class="flex items-center gap-2 px-2 py-2 border rounded-full appearance-none cursor-pointer transition-colors duration-300"
           [ngClass]="{
@@ -130,7 +102,6 @@
         </button>
 
       </div>
-
       <!-- Data Grid Area -->
       <div *ngIf="!loading && !error"
         [class]="'rounded-lg border transition-colors duration-300 table-container ' + (isDarkMode ? 'bg-slate-900 border-gray-700' : 'bg-gray-100 border-gray-100')">
@@ -140,7 +111,6 @@
        'border-gray-700': isDarkMode,
        'border-gray-300': !isDarkMode
      }">
-
           <!-- Active Row Groups -->
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2 min-w-[50px] border-r" [ngClass]="{
@@ -152,7 +122,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
             </div>
-
             <!-- Active Groups Pills -->
             <div class="flex flex-wrap gap-2">
               <div *ngFor="let field of rowGroups"
@@ -168,9 +137,8 @@
             </div>
           </div>
         </div>
-
         <!-- Table Container with Fixed Header -->
-        <div class="relative overflow-x-auto h-[60vh] table-container">
+        <cdk-virtual-scroll-viewport itemSize="70" class="w-full h-[60vh]">
           <table class="data-table">
             <thead class="table-header">
               <tr>
@@ -193,7 +161,6 @@
                   </th>
                 </ng-container>
               </tr>
-
               <tr class="bg-inherit">
                 <!-- S.No Header -->
                 <th class="w-16 p-4 text-left font-medium border-b border-r whitespace-nowrap"
@@ -201,7 +168,6 @@
                   [class.border-gray-700]="isDarkMode" [class.border-gray-300]="!isDarkMode">
                   S.No
                 </th>
-
                 <!-- Checkbox Header -->
                 <th class="w-16 p-4 text-left whitespace-nowrap border-b" [class.border-gray-700]="isDarkMode"
                   [class.border-gray-300]="!isDarkMode" [class.text-gray-300]="isDarkMode"
@@ -209,7 +175,6 @@
                   <input type="checkbox" [checked]="isAllSelected()" (change)="toggleAllRows()"
                     class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
                 </th>
-
                 <!-- Dynamic Column Headers -->
                 <th *ngFor="let col of getOrderedColumns()" [class.hidden]="!isColumnVisible(col.field)"
                   class="p-4 text-left font-medium relative whitespace-nowrap min-w-[210px] border-b border-r cursor-move"
@@ -217,7 +182,6 @@
                   [class.border-gray-700]="isDarkMode" [class.border-gray-300]="!isDarkMode" [draggable]="true"
                   (dragstart)="onColumnDragStart($event, col)" (dragover)="onColumnDragOver($event)"
                   (drop)="onColumnDrop($event, col)">
-
                   <!-- Header Title & Sort Icon -->
                   <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 truncate">
@@ -233,7 +197,6 @@
                         </svg>
                       </span>
                     </div>
-
                     <!-- Column Menu Icon -->
                     <div
                       *ngIf="['name', 'country', 'language', 'gameName', 'bought', 'bankBalance', 'rating', 'city', 'street', 'countryCode'].includes(col.field)"
@@ -244,7 +207,6 @@
                             d="M12 6.75a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 20.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
                         </svg>
                       </button>
-
                       <!-- Column Menu Dropdown -->
                       <div *ngIf="isColumnMenuOpen(col.field)" #columnMenuRef
                         class="absolute right-0 mt-2 w-55 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-700 z-50"
@@ -288,7 +250,6 @@
                               d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
                           </svg>
                         </button>
-
                         <div *ngIf="isFilterDropdownOpen(col.field)" #filterDropdownRefs
                           class="absolute right-0 mt-2 w-55 rounded-md shadow-lg divide-y divide-gray-700 z-50"
                           [class.hover:bg-[#2a3447]]="isDarkMode" [class.hover:bg-gray-200]="!isDarkMode"
@@ -327,89 +288,81 @@
                       </div>
                     </div>
                   </div>
-
-
                 </th>
               </tr>
-
             </thead>
+            <tbody>
+              <ng-container *cdkVirtualFor="let item of getGroupedData(); trackBy: trackById">
+                <!-- Group Row -->
+                <tr *ngIf="isGroupItem(item)"
+                  class="group-row border-b border-gray-700 cursor-pointer hover:bg-[#343e54] transition-all duration-200"
+                  [class.expanded]="isGroupExpanded(item.groupValue)"
+                  (click)="toggleGroup(item.groupValue)">
+                  <td [attr.colspan]="100" class="p-4 border-b border-gray-700">
+                    <div class="flex items-center gap-2 text-gray-300">
+                      <svg class="w-4 h-4 transform transition-transform flex-shrink-0"
+                        [class.rotate-90]="isGroupExpanded(item.groupValue)" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span class="whitespace-nowrap">
+                        {{ item.groupValue }} ({{ item.count }} items)
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+                <!-- Participant Row -->
+                <tr *ngIf="isParticipantItem(item)" 
+                    class="table-row fade-in"
+                    [class.selected]="hiddenRows.has(getRowId(item))">
+                  <!-- S.No Column -->
+                  <td class="table-cell w-16 p-4 whitespace-nowrap"
+                    [ngClass]="isDarkMode ? 'text-gray-300 border-b border-r border-gray-700' : 'text-gray-600 border-b border-r border-gray-300'">
+                    {{ (currentPage - 1) * pageSize + getGroupedData().indexOf(item) + 1 }}
+                  </td>
+                  <!-- Checkbox Column -->
+                  <td class="table-cell w-16 p-4" [ngClass]="isDarkMode ? 'border-b border-gray-700' : 'border-b border-gray-300'">
+                    <input
+                      type="checkbox"
+                      [checked]="hiddenRows.has(getRowId(item))"
+                      (change)="toggleRowSelection(getRowId(item))"
+                      class="custom-checkbox"
+                      [ngClass]="isDarkMode
+                        ? 'rounded bg-gray-800 border-gray-600 text-blue-400 focus:ring-blue-400'
+                        : 'rounded bg-white border-gray-300 text-blue-600 focus:ring-blue-600'"
+                    />
+                  </td>
+                  <!-- Data Columns -->
+                  <td *ngFor="let col of columns" [ngClass]="{
+                    'hidden': !isColumnVisible(col.field),
+                    'table-cell': true,
+                    'whitespace-nowrap': true,
+                    'min-w-[210px]': true,
+                    'truncate': true,
+                    'p-2': true,
+                    'border-b border-r': true,
+                    'border-gray-700 text-gray-300': isDarkMode,
+                    'border-gray-300 text-gray-700': !isDarkMode
+                  }">
+                    <!-- If column is 'timeline', show EChart -->
+                    <ng-container *ngIf="col.field === 'timeline' && isParticipantItem(item) && item.timelineData; else normalCell">
+  <div class="h-[60px] w-full p-0 m-0 overflow-hidden">
+    <div echarts [options]="getTimelineChartOptions(item.timelineData)" class="h-full w-full -mb-1"></div>
+  </div>
+</ng-container>
+
+                    <!-- Else, show normal text -->
+                    <ng-template #normalCell>
+                      <span [class]="getFieldClasses(item, col)" class="truncate block">
+                        {{ getFieldContent(item, col) }}
+                      </span>
+                    </ng-template>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
           </table>
-          <cdk-virtual-scroll-viewport itemSize="70" class="w-full" [style.height.px]="600">
-            <table class="data-table">
-              <tbody>
-                <ng-container *cdkVirtualFor="let item of getGroupedData(); trackBy: trackById">
-                  <!-- Group Row -->
-                  <tr *ngIf="isGroupItem(item)"
-                    class="group-row border-b border-gray-700 cursor-pointer hover:bg-[#343e54] transition-all duration-200"
-                    [class.expanded]="isGroupExpanded(item.groupValue)"
-                    (click)="toggleGroup(item.groupValue)">
-                    <td [attr.colspan]="100" class="p-4 border-b border-gray-700">
-                      <div class="flex items-center gap-2 text-gray-300">
-                        <svg class="w-4 h-4 transform transition-transform flex-shrink-0"
-                          [class.rotate-90]="isGroupExpanded(item.groupValue)" fill="none" viewBox="0 0 24 24"
-                          stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                        <span class="whitespace-nowrap">
-                          {{ item.groupValue }} ({{ item.count }} items)
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <!-- Participant Row -->
-                  <tr *ngIf="isParticipantItem(item)" 
-                      class="table-row fade-in"
-                      [class.selected]="hiddenRows.has(getRowId(item))">
-                    <!-- S.No Column -->
-                    <td class="table-cell w-16 p-4 whitespace-nowrap"
-                      [ngClass]="isDarkMode ? 'text-gray-300 border-b border-r border-gray-700' : 'text-gray-600 border-b border-r border-gray-300'">
-                      {{ (currentPage - 1) * pageSize + getGroupedData().indexOf(item) + 1 }}
-                    </td>
-
-                    <!-- Checkbox Column -->
-                    <td class="table-cell w-16 p-4" [ngClass]="isDarkMode ? 'border-b border-gray-700' : 'border-b border-gray-300'">
-                      <input
-                        type="checkbox"
-                        [checked]="hiddenRows.has(getRowId(item))"
-                        (change)="toggleRowSelection(getRowId(item))"
-                        class="custom-checkbox"
-                        [ngClass]="isDarkMode
-                          ? 'rounded bg-gray-800 border-gray-600 text-blue-400 focus:ring-blue-400'
-                          : 'rounded bg-white border-gray-300 text-blue-600 focus:ring-blue-600'"
-                      />
-                    </td>
-
-                    <!-- Data Columns -->
-                    <td *ngFor="let col of columns" [ngClass]="{
-                      'hidden': !isColumnVisible(col.field),
-                      'table-cell': true,
-                      'whitespace-nowrap': true,
-                      'min-w-[210px]': true,
-                      'truncate': true,
-                      'p-4': true,
-                      'border-b border-r': true,
-                      'border-gray-700 text-gray-300': isDarkMode,
-                      'border-gray-300 text-gray-700': !isDarkMode
-                    }">
-                      <!-- If column is 'timeline', show EChart -->
-                      <ng-container *ngIf="col.field === 'timeline' && isParticipantItem(item) && item.timelineData; else normalCell">
-                        <div echarts [options]="getTimelineChartOptions(item.timelineData)" class="h-[60px] w-full"></div>
-                      </ng-container>
-                      <!-- Else, show normal text -->
-                      <ng-template #normalCell>
-                        <span [class]="getFieldClasses(item, col)" class="truncate block">
-                          {{ getFieldContent(item, col) }}
-                        </span>
-                      </ng-template>
-                    </td>
-                  </tr>
-                </ng-container>
-              </tbody>
-            </table>
-          </cdk-virtual-scroll-viewport>
-        </div>
-
+        </cdk-virtual-scroll-viewport>
         <!-- Pagination -->
         <div class="pagination p-4 border-t" [ngClass]="isDarkMode ? 'border-gray-700' : 'border-gray-300'">
           <div class="flex items-center justify-between w-full">
@@ -445,6 +398,5 @@
             </div>
           </div>
         </div>
-
       </div>
     </div>

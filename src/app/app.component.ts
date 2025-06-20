@@ -69,81 +69,42 @@ export class AppComponent implements OnInit, OnDestroy {
   Math = Math;
 
   // Data properties
-  generateChartOptions(item: any): any {
-    return {
-      backgroundColor: 'transparent',
-      title: { show: false },
-      tooltip: { 
-        trigger: 'axis',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        borderColor: '#4ea6ff',
-        borderWidth: 1,
-        textStyle: { color: '#fff' }
-      },
-      grid: { 
-        left: '5%', 
-        right: '5%', 
-        top: '10%', 
-        bottom: '10%',
-        containLabel: true
-      },
-      xAxis: {
-        type: 'category',
-        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-        axisLabel: { 
-          color: '#ccc', 
-          fontSize: 9,
-          show: false
-        },
-        axisLine: { show: false },
-        axisTick: { show: false }
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: { 
-          color: '#ccc', 
-          fontSize: 9,
-          show: false
-        },
-        axisLine: { show: false },
-        axisTick: { show: false },
-        splitLine: { show: false }
-      },
-      series: [{
-        type: 'bar',
-        data: [5, 10, 15, 8, 12], // Optionally use item-based values
-        itemStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: '#4ea6ff' },
-              { offset: 1, color: '#2d5aa0' }
-            ]
-          },
-          borderRadius: [4, 4, 0, 0]
-        },
-        emphasis: {
-          itemStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: '#60a5fa' },
-                { offset: 1, color: '#3b82f6' }
-              ]
-            }
-          }
-        }
-      }]
-    };
-  }
+ generateChartOptions(item: any): any {
+  return {
+    backgroundColor: 'transparent',
+    animation: false, // disables animation for better performance
+    tooltip: { show: false }, // disables tooltip
+    grid: { 
+      left: 0, 
+      right: 0, 
+      top: 0, 
+      bottom: 0 
+    },
+    xAxis: {
+      type: 'category',
+      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      axisLabel: { show: false },
+      axisLine: { show: false },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { show: false },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { show: false }
+    },
+    series: [{
+      type: 'bar',
+      data: item.timelineData || [5, 10, 15, 8, 12],
+      itemStyle: {
+        color: '#4ea6ff',
+        borderRadius: [3, 3, 0, 0]
+      }
+    }]
+  };
+}
+
   data: Participant[] = [];
   filteredData: Participant[] = [];
   displayedData: DataItem[] = [];
@@ -224,11 +185,9 @@ pageSize: number = this.pageSizeOptions[0]; // Default to 10 rows per page
     // Initialize column order
     this.columnOrder = this.columns.map(col => col.field);
   }
-
   ngOnInit() {
     this.loadData();
   }
-
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
@@ -264,10 +223,11 @@ pageSize: number = this.pageSizeOptions[0]; // Default to 10 rows per page
           console.log('Raw response:', response);
           if (response && response.participants) {
             // Add timelineData property with random data if missing
-           this.data = (response.participants as Participant[]).map(p => ({
-  ...p,
-  timelineData: p.timelineData || Array.from({ length: 20 }, () => Math.floor(Math.random() * 20) + 1)
-}));
+            this.data = response.participants.map(p => ({
+              ...p,
+             timelineData: Array.from({ length: 20 }, () => Math.floor(Math.random() * 20) + 1)
+
+            }));
             console.log('Data loaded:', this.data.length, 'participants');
             
             const rowCount = parseInt(this.selectedDataSize.split(' ')[1],);
@@ -488,9 +448,6 @@ isDataItem(item: DataItem | GroupItem): item is DataItem {
 
     this.applyFilters();
   }
-  
-
-
   selectAllFilterOptions(field: string) {
     if (!this.selectedFilterOptions[field]) {
       this.selectedFilterOptions[field] = new Set();
@@ -647,10 +604,6 @@ private applyFilters() {
   getColumnGroupColspan(group: ColumnGroup): number {
     return group.columns.filter(field => this.isColumnVisible(field as keyof Participant)).length;
   }
-
-  // Column sorting
-  // sortAscending method moved to enhanced version below
-
   // Row selection
   isAllSelected(): boolean {
     return this.filteredData.length > 0 && this.filteredData.every(item => this.hiddenRows.has(this.getRowId(item)));
@@ -783,51 +736,69 @@ private applyFilters() {
   }
 
   // Add a method to generate compact bar chart options for timeline
-  getTimelineChartOptions(data: number[]): EChartsOption {
-    return {
-      animation: true,
-      animationDuration: 1000,
-      animationEasing: 'cubicOut',
-      tooltip: { 
-        show: true,
-        trigger: 'axis',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        borderColor: '#4ea6ff',
-        borderWidth: 1,
-        textStyle: { color: '#fff', fontSize: 12 },
-        formatter: (params: any) => {
-          return `Value: ${params[0].value}`;
+getTimelineChartOptions(data: number[]): EChartsOption {
+  const maxValue = Math.max(...data, 1); // prevent zero max
 
-        }
+  return {
+    animation: true,
+    animationDuration: 100,
+    tooltip: { 
+      show: true,
+      trigger: 'axis',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      borderColor: '#4ea6ff',
+      borderWidth: 1,
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: (params: any) => `Value: ${params[0].value}`
+    },
+    grid: { 
+      top: 0,
+      bottom: 0,
+      left: 2,
+      right: 2,
+      containLabel: false
+    },
+    xAxis: { 
+      type: 'category',
+      show: false,
+      data: data.map((_, i) => i),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      show: false,
+      min: 0,
+      max: maxValue,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { show: false },
+      splitLine: { show: false }
+    },
+    series: [{
+      type: 'bar',
+      data,
+      barWidth: '60%',
+      barGap: '0%',
+      barCategoryGap: '0%',
+      itemStyle: { 
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: '#4ea6ff' },
+            { offset: 1, color: '#2d5aa0' }
+          ]
+        },
+        borderRadius: [0, 0, 0, 0]
       },
-      grid: { 
-        left: 2, 
-        right: 2, 
-        top: 2, 
-        bottom: 2,
-        containLabel: false
-      },
-      xAxis: { 
-        type: 'category', 
-        show: false, 
-        data: data.map((_, i) => i),
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { show: false }
-      },
-      yAxis: { 
-        type: 'value', 
-        show: false,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { show: false },
-        splitLine: { show: false }
-      },
-      series: [{
-        type: 'bar',
-        data,
-        barWidth: '80%',
-        itemStyle: { 
+      emphasis: {
+        disabled: false,
+        itemStyle: {
           color: {
             type: 'linear',
             x: 0,
@@ -835,36 +806,16 @@ private applyFilters() {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: '#4ea6ff' },
-              { offset: 1, color: '#2d5aa0' }
+              { offset: 0, color: '#60a5fa' },
+              { offset: 1, color: '#3b82f6' }
             ]
-          },
-          borderRadius: [2, 2, 0, 0]
-        },
-        emphasis: { 
-          disabled: false,
-          itemStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: '#60a5fa' },
-                { offset: 1, color: '#3b82f6' }
-              ]
-            }
           }
-        },
-        label: { show: false },
-        markLine: undefined,
-        markPoint: undefined,
-        markArea: undefined
-      }]
-    };
-  }
-
+        }
+      },
+      label: { show: false }
+    }]
+  };
+}
   // Add a trackById method for virtual scroll
   trackById(index: number, item: any) {
     return item.id || item.groupValue || index;
@@ -972,7 +923,7 @@ private applyFilters() {
   private showSelectionFeedback(): void {
     // This could be enhanced with a toast notification
     const selectedCount = this.selectedRows.size;
-   console.log(`${selectedCount} row(s) selected`);
+    console.log(`${selectedCount} row(s) selected`);
 
   }
 

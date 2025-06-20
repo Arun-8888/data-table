@@ -13,8 +13,8 @@ interface ParticipantsResponse {
     countryCode: string;
     city: string;
     street: string;
-    bankname?: string;
-    branch?: string;
+    timeline?: string;
+    totalvalue ?: string;
   }>;
 }
 
